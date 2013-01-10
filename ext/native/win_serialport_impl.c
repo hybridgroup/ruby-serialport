@@ -36,18 +36,7 @@ static char sSetCommTimeouts[] = "SetCommTimeouts";
 static HANDLE get_handle_helper(obj)
    VALUE obj;
 {
-#ifdef HAVE_RUBY_IO_H
-   rb_io_t *fptr;
-#else
-   OpenFile *fptr;
-#endif
-
-   GetOpenFile(obj, fptr);
-#ifdef HAVE_RUBY_IO_H
-   return (HANDLE) _get_osfhandle(fptr->fd);
-#else
-   return (HANDLE) _get_osfhandle(fileno(fptr->f));
-#endif
+  return rb_iv_get(obj,"@@fh");
 }
 
 /* hack to work around the fact that Ruby doesn't use GetLastError? */
@@ -63,7 +52,7 @@ VALUE RB_SERIAL_EXPORT sp_create_impl(class, _port)
    VALUE class, _port;
 {
 #ifdef HAVE_RUBY_IO_H
-   rb_io_t *fp;
+  rb_io_t *fp;
 #else
    OpenFile *fp;
 #endif
@@ -88,10 +77,9 @@ VALUE RB_SERIAL_EXPORT sp_create_impl(class, _port)
          {
             rb_raise(rb_eArgError, "illegal port number");
          }
-		 snprintf(port, sizeof(port) - 1, "\\\\.\\COM%d", num_port + 1); /* '0' is actually COM1, etc. */
-                 port[sizeof(port) - 1] = 0;
-
-         break;
+        snprintf(port, sizeof(port) - 1, "\\\\.\\COM%d", num_port + 1); /* '0' is actually COM1, etc. */
+        port[sizeof(port) - 1] = 0;
+      break;
 
       case T_STRING:
          Check_SafeStr(_port);
@@ -113,23 +101,24 @@ VALUE RB_SERIAL_EXPORT sp_create_impl(class, _port)
          break;
    }
 
-   fd = open(port, O_BINARY | O_RDWR);
-   if (fd == -1)
-   {
+   fh = CreateFile(port, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+   rb_iv_set(sp,"@@fh",fh);
+
+   if (fh == INVALID_HANDLE_VALUE){
+      CloseHandle(fh);
       rb_sys_fail(port);
    }
 
-   fh = (HANDLE) _get_osfhandle(fd);
    if (SetupComm(fh, 1024, 1024) == 0)
    {
-      close(fd);
+      CloseHandle(fh);
       rb_raise(rb_eArgError, "not a serial port");
    }
 
    dcb.DCBlength = sizeof(dcb);
    if (GetCommState(fh, &dcb) == 0)
    {
-      close(fd);
+      CloseHandle(fh);
       _rb_win32_fail(sGetCommState);
    }
    dcb.fBinary = TRUE;
@@ -145,17 +134,11 @@ VALUE RB_SERIAL_EXPORT sp_create_impl(class, _port)
    dcb.XoffChar = 19;
    if (SetCommState(fh, &dcb) == 0)
    {
-      close(fd);
+      CloseHandle(fh);
       _rb_win32_fail(sSetCommState);
    }
-
+   
    errno = 0;
-   fp->mode = FMODE_READWRITE | FMODE_BINMODE | FMODE_SYNC;
-#ifdef HAVE_RUBY_IO_H
-   fp->fd = fd;
-#else
-   fp->f = fdopen(fd, "rb+");
-#endif
    return (VALUE) sp;
 }
 
