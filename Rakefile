@@ -15,9 +15,22 @@ begin
     gemspec.authors = ['Guillaume Pierronnet', 'Alan Stern', 'Daniel E. Shipton', 'Tobin Richard', 'Hector Parra', 'Ryan C. Payne']
     gemspec.has_rdoc = true
     gemspec.extensions << 'ext/native/extconf.rb'
+    gemspec.version = "1.1.1"
+    gemspec.files = [
+      "CHANGELOG",
+      "CHECKLIST",
+      "LICENSE",
+      "MANIFEST",
+      "README",
+      "Rakefile",
+      "VERSION",
+      "lib/serialport.bundle",
+      "lib/serialport.rb",
+      "serialport.gemspec",
+    ]
 
     Rake::ExtensionTask.new "serialport", gemspec do |ext|
-      ext.lib_dir = File.join(*['lib', ENV['FAT_DIR']].compact)
+      #ext.lib_dir = File.join(*['lib', ENV['FAT_DIR']].compact)
       ext.ext_dir = "ext/native"
     end
   end
