@@ -415,35 +415,26 @@ static VALUE sp_signals(self)
 static VALUE sp_write(self, str)
   VALUE self, str;
 {
-  char *c_str = RSTRING_PTR(str);
-  int len = RSTRING_LEN(str);
-  DWORD n = 0;
-  WriteFile(rb_iv_get(self,"@@fh"), c_str, len, &n, NULL);
-  rb_iv_set(self,"@@byte_offset", rb_iv_get(self,"@@initial_byte_offset"));
-  return n;
+  return sp_write_impl(self, str);
 }
 
-static VALUE sp_read(self, bytes)
-	VALUE self, bytes;
+static VALUE sp_read(argc, argv, self)
+	int argc;
+	VALUE *argv, self;
 {
-  long c_bytes = FIX2LONG(bytes);
-  char ReadBuffer[c_bytes];
-  DWORD n = 0;
-  SetFilePointer(rb_iv_get(self,"@@fh"), FIX2LONG(rb_iv_get(self,"@@byte_offset")), NULL, FILE_BEGIN) && ReadFile(rb_iv_get(self,"@@fh"), ReadBuffer, c_bytes, &n, NULL); 
-  rb_iv_set(self,"@@byte_offset", rb_iv_get(self, "@@byte_offset")+c_bytes);
-  return rb_str_new(ReadBuffer, c_bytes); 
+  return sp_read_impl(argc, argv, self);
 }
 
 static void sp_close(self)
 	VALUE self;
 {
-	CloseHandle(rb_iv_get(self,"@@fh"));
+  sp_close_impl(self);
 }
 
 static void sp_set_initial_offset(self, offset)
 	VALUE self, offset;
 {
-	rb_iv_set(self,"@@initial_byte_offset", FIX2INT(offset));
+  sp_set_initial_offset_impl(self, offset);
 }
 
 /*
@@ -475,7 +466,19 @@ void Init_serialport()
    rb_gc_register_address(&sDcd);
    rb_gc_register_address(&sRi);
 
+#if (defined(WIN32) || defined(OS_MSWIN) || defined(OS_BCCWIN) || defined(OS_MINGW))
+   cSerialPort = rb_define_class("SerialPort", rb_cObject);
+   rb_define_method(cSerialPort, "write", sp_write, 1);
+   rb_define_method(cSerialPort, "read", sp_read, -1);
+   rb_define_method(cSerialPort, "close", sp_close, 0);
+   rb_define_class_variable(cSerialPort,"@@fh",NULL);
+   rb_define_class_variable(cSerialPort,"@@byte_offset",0);
+   rb_define_class_variable(cSerialPort,"@@initial_offset",0);
+   rb_define_method(cSerialPort, "initial_byte_offset=", sp_set_initial_offset, 1);
+#else
    cSerialPort = rb_define_class("SerialPort", rb_cIO);
+#endif
+  
    rb_define_singleton_method(cSerialPort, "create", sp_create, 1);
 
    rb_define_method(cSerialPort, "get_modem_params", sp_get_modem_params, 0);
@@ -524,13 +527,4 @@ void Init_serialport()
    /* the package's version as a string "X.Y.Z", beeing major, minor and patch level */
    rb_define_const(cSerialPort, "VERSION", rb_str_new2(RUBY_SERIAL_PORT_VERSION));
 
-#ifdef WIN32
-   rb_define_method(cSerialPort, "write", sp_write, 1);
-   rb_define_method(cSerialPort, "read", sp_read, 1);
-   rb_define_method(cSerialPort, "close", sp_close, 0);
-   rb_define_class_variable(cSerialPort,"@@fh",NULL);
-   rb_define_class_variable(cSerialPort,"@@byte_offset",0);
-   rb_define_class_variable(cSerialPort,"@@initial_offset",0);
-   rb_define_method(cSerialPort, "initial_byte_offset=", sp_set_initial_offset, 1);
-#endif
 }

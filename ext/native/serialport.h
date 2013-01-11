@@ -95,5 +95,9 @@ VALUE RB_SERIAL_EXPORT sp_set_rts_impl(VALUE self, VALUE val);
 VALUE RB_SERIAL_EXPORT sp_set_dtr_impl(VALUE self, VALUE val);
 VALUE RB_SERIAL_EXPORT sp_get_rts_impl(VALUE self);
 VALUE RB_SERIAL_EXPORT sp_get_dtr_impl(VALUE self);
+VALUE RB_SERIAL_EXPORT sp_write_impl(VALUE self, VALUE str);
+VALUE RB_SERIAL_EXPORT sp_read_impl(int argc, VALUE *argv, VALUE self);
+void RB_SERIAL_EXPORT sp_close_impl(VALUE self);
+void RB_SERIAL_EXPORT sp_set_initial_byte_offset_impl(VALUE self, VALUE offset);
 
 #endif

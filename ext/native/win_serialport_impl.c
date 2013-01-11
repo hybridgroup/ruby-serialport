@@ -51,11 +51,6 @@ static void _rb_win32_fail(const char *function_call) {
 VALUE RB_SERIAL_EXPORT sp_create_impl(class, _port)
    VALUE class, _port;
 {
-#ifdef HAVE_RUBY_IO_H
-  rb_io_t *fp;
-#else
-   OpenFile *fp;
-#endif
    int fd;
    HANDLE fh;
    int num_port;
@@ -64,10 +59,9 @@ VALUE RB_SERIAL_EXPORT sp_create_impl(class, _port)
 
    DCB dcb;
 
-   NEWOBJ(sp, struct RFile);
+   NEWOBJ(sp, struct RObject);
    rb_secure(4);
-   OBJSETUP(sp, class, T_FILE);
-   MakeOpenFile((VALUE) sp, fp);
+   OBJSETUP(sp, class, T_OBJECT);
 
    switch(TYPE(_port))
    {
@@ -601,6 +595,58 @@ VALUE RB_SERIAL_EXPORT sp_get_dtr_impl(self)
 {
    rb_notimplement();
    return self;
+}
+
+VALUE RB_SERIAL_EXPORT sp_write_impl(self, str)
+  VALUE self, str;
+{
+  char *c_str = RSTRING_PTR(str);
+  int len = RSTRING_LEN(str);
+  DWORD n = 0;
+  if(FALSE == WriteFile(rb_iv_get(self,"@@fh"), c_str, len, &n, NULL)){
+    _rb_win32_fail("WriteFile");
+  }
+  rb_iv_set(self,"@@byte_offset", rb_iv_get(self,"@@initial_byte_offset"));
+  return n;
+}
+
+VALUE RB_SERIAL_EXPORT sp_read_impl(argc, argv, self)
+  int argc;
+  VALUE *argv, self;
+{
+  long bytes = 1024;
+
+  if (argc > 1){
+    rb_raise(rb_eArgError, "Wrong number of arguments in read()");
+  }
+  else if (argc == 1){
+    bytes = FIX2LONG(argv[0]); 
+  }
+  
+  char ReadBuffer[bytes];
+  DWORD n = 0;
+  DWORD w;
+  w = SetFilePointer(rb_iv_get(self,"@@fh"), FIX2LONG(rb_iv_get(self,"@@byte_offset")), NULL, FILE_BEGIN);
+  if (w == INVALID_SET_FILE_POINTER){
+    _rb_win32_fail("SetFilePointer");
+  }
+  if (FALSE == ReadFile(rb_iv_get(self,"@@fh"), ReadBuffer, bytes, &n, NULL)){
+    _rb_win32_fail("ReadFile");
+  }
+  rb_iv_set(self,"@@byte_offset", rb_iv_get(self, "@@byte_offset") + bytes);
+  return rb_str_new(ReadBuffer, bytes);
+}
+
+void RB_SERIAL_EXPORT sp_close_impl(self)
+  VALUE self;
+{
+  CloseHandle(rb_iv_get(self,"@@fh"));
+}
+
+void RB_SERIAL_EXPORT sp_set_initial_offset_impl(self, offset)
+  VALUE self, offset;
+{
+  rb_iv_set(self,"@@initial_byte_offset", FIX2INT(offset));
 }
 
 #endif /* defined(OS_MSWIN) || defined(OS_BCCWIN) || defined(OS_MINGW) */
