@@ -4,14 +4,14 @@
 # -*- encoding: utf-8 -*-
 
 Gem::Specification.new do |s|
-  s.name = "serialport"
-  s.version = "1.1.1"
+  s.name = "hybridgroup-serialport"
+  s.version = "1.2.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Guillaume Pierronnet", "Alan Stern", "Daniel E. Shipton", "Tobin Richard", "Hector Parra", "Ryan C. Payne"]
-  s.date = "2012-11-02"
+  s.date = "2013-01-12"
   s.description = "Ruby/SerialPort is a Ruby library that provides a class for using RS-232 serial ports."
-  s.email = "hector@hectorparra.com"
+  s.email = "serialport@hybridgroup.com"
   s.extensions = ["ext/native/extconf.rb", "ext/native/extconf.rb"]
   s.extra_rdoc_files = [
     "LICENSE",
@@ -30,12 +30,12 @@ Gem::Specification.new do |s|
     "ext/native/serialport.c",
     "ext/native/serialport.h",
     "ext/native/win_serialport_impl.c",
+    "hybridgroup-serialport.gemspec",
     "lib/serialport.rb",
-    "serialport.gemspec",
     "test/miniterm.rb",
     "test/set_readtimeout.rb"
   ]
-  s.homepage = "http://github.com/hparra/ruby-serialport/"
+  s.homepage = "http://github.com/hybridgroup/ruby-serialport/"
   s.require_paths = ["lib"]
   s.rubygems_version = "1.8.24"
   s.summary = "Library for using RS-232 serial ports."
