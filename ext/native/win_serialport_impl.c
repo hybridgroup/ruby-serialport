@@ -44,7 +44,7 @@ static void _rb_win32_fail(const char *function_call) {
   rb_raise(
     rb_eRuntimeError, 
     "%s failed: GetLastError returns %d", 
-    function_call, GetLastError( )
+    function_call, GetLastError()
   );
 }
 
@@ -95,7 +95,7 @@ VALUE RB_SERIAL_EXPORT sp_create_impl(class, _port)
          break;
    }
 
-   fh = CreateFile(port, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+   fh = CreateFile(port, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
    rb_iv_set(sp,"@@fh",fh);
 
    if (fh == INVALID_HANDLE_VALUE){
@@ -610,6 +610,22 @@ VALUE RB_SERIAL_EXPORT sp_write_impl(self, str)
   return n;
 }
 
+VALUE RB_SERIAL_EXPORT sp_write_nonblock_impl(self, str)
+  VALUE self, str;
+{
+/*
+  char *c_str = RSTRING_PTR(str);
+  int len = RSTRING_LEN(str);
+  DWORD n = 0;
+  if(FALSE == WriteFile(rb_iv_get(self,"@@fh"), c_str, len, &n, NULL)){
+    _rb_win32_fail("WriteFile");
+  }
+  rb_iv_set(self,"@@byte_offset", rb_iv_get(self,"@@initial_byte_offset"));
+  return n;
+*/
+  return rb_notimplement();
+}
+
 VALUE RB_SERIAL_EXPORT sp_read_impl(argc, argv, self)
   int argc;
   VALUE *argv, self;
@@ -617,7 +633,7 @@ VALUE RB_SERIAL_EXPORT sp_read_impl(argc, argv, self)
   long bytes = 1024;
 
   if (argc > 1){
-    rb_raise(rb_eArgError, "Wrong number of arguments in read()");
+    rb_raise(rb_eArgError, "Too many arguments in read()");
   }
   else if (argc == 1){
     bytes = FIX2LONG(argv[0]); 
@@ -630,13 +646,53 @@ VALUE RB_SERIAL_EXPORT sp_read_impl(argc, argv, self)
   if (w == INVALID_SET_FILE_POINTER){
     _rb_win32_fail("SetFilePointer");
   }
-  if (FALSE == ReadFile(rb_iv_get(self,"@@fh"), ReadBuffer, bytes, &n, NULL)){
+  if (!ReadFile(rb_iv_get(self,"@@fh"), ReadBuffer, bytes, &n, NULL)){
     _rb_win32_fail("ReadFile");
   }
   rb_iv_set(self,"@@byte_offset", rb_iv_get(self, "@@byte_offset") + bytes);
   return rb_str_new(ReadBuffer, bytes);
 }
 
+VALUE RB_SERIAL_EXPORT sp_read_nonblock_impl(argc, argv, self)
+  int argc;
+  VALUE *argv, self;
+{
+  long bytes = 1024;
+
+  if (argc > 1){
+    rb_raise(rb_eArgError, "Too many arguments in read_nonblock()");
+  }
+  else if (argc == 1){
+    bytes = FIX2LONG(argv[0]); 
+  }
+  
+  char ReadBuffer[bytes];
+  DWORD syncbytes = 0;
+  DWORD asyncbytes = 0;
+  BOOL fOverlapped = FALSE;
+  OVERLAPPED ov = {0};
+
+  if (!ReadFile(rb_iv_get(self,"@@fh"), ReadBuffer, bytes, &syncbytes, &ov)){
+    if (GetLastError() != ERROR_IO_PENDING){
+      sp_close_impl(self);
+      _rb_win32_fail("ReadFile");
+    }
+    else{
+      fOverlapped = TRUE;
+    }
+  }
+  if (fOverlapped){
+    if (GetOverlappedResult(rb_iv_get(self,"@@fh")), &ov, &asyncbytes, TRUE){
+      return rb_str_new(ReadBuffer, bytes);
+    }
+    else{
+      return rb_str_new(ReadBuffer, bytes);
+    }
+  }
+  else{
+    return rb_str_new(ReadBuffer, bytes);
+  }
+}
 void RB_SERIAL_EXPORT sp_close_impl(self)
   VALUE self;
 {

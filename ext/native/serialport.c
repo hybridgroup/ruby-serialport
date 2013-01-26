@@ -417,12 +417,23 @@ static VALUE sp_write(self, str)
 {
   return sp_write_impl(self, str);
 }
+static VALUE sp_write_nonblock(self, str)
+  VALUE self, str;
+{
+  return sp_write_nonblock_impl(self, str);
+}
 
 static VALUE sp_read(argc, argv, self)
 	int argc;
 	VALUE *argv, self;
 {
   return sp_read_impl(argc, argv, self);
+}
+static VALUE sp_read_nonblock(argc, argv, self)
+	int argc;
+	VALUE *argv, self;
+{
+  return sp_read_nonblock_impl(argc, argv, self);
 }
 
 static void sp_close(self)
@@ -469,7 +480,9 @@ void Init_serialport()
 #if (defined(WIN32) || defined(OS_MSWIN) || defined(OS_BCCWIN) || defined(OS_MINGW))
    cSerialPort = rb_define_class("SerialPort", rb_cObject);
    rb_define_method(cSerialPort, "write", sp_write, 1);
+   rb_define_method(cSerialPort, "write_nonblock", sp_write_nonblock, 1);
    rb_define_method(cSerialPort, "read", sp_read, -1);
+   rb_define_method(cSerialPort, "read_nonblock", sp_read_nonblock, -1);
    rb_define_method(cSerialPort, "close", sp_close, 0);
    rb_define_class_variable(cSerialPort,"@@fh",NULL);
    rb_define_class_variable(cSerialPort,"@@byte_offset",0);
