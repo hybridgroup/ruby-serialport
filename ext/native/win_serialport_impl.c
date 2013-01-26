@@ -603,7 +603,7 @@ VALUE RB_SERIAL_EXPORT sp_write_impl(self, str)
   char *c_str = RSTRING_PTR(str);
   int len = RSTRING_LEN(str);
   DWORD n = 0;
-  if(FALSE == WriteFile(rb_iv_get(self,"@@fh"), c_str, len, &n, NULL)){
+  if(!WriteFile(rb_iv_get(self,"@@fh"), c_str, len, &n, NULL)){
     _rb_win32_fail("WriteFile");
   }
   rb_iv_set(self,"@@byte_offset", rb_iv_get(self,"@@initial_byte_offset"));
@@ -613,17 +613,26 @@ VALUE RB_SERIAL_EXPORT sp_write_impl(self, str)
 VALUE RB_SERIAL_EXPORT sp_write_nonblock_impl(self, str)
   VALUE self, str;
 {
-/*
   char *c_str = RSTRING_PTR(str);
   int len = RSTRING_LEN(str);
   DWORD n = 0;
-  if(FALSE == WriteFile(rb_iv_get(self,"@@fh"), c_str, len, &n, NULL)){
-    _rb_win32_fail("WriteFile");
+  OVERLAPPED ov = {0};
+  BOOL fOverlapped = FALSE;
+  DWORD dwRes;
+  ov.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+
+  if(!WriteFile(rb_iv_get(self,"@@fh"), c_str, len, &n, &ov)){
+    if (GetLastError() != ERROR_IO_PENDING){
+      _rb_win32_fail("WriteFile");
+    }
+    else {
+      if (!GetOverlappedResults(rb_iv_get(self,"@@fh"), &ov, &n, TRUE)){
+        _rb_win32_fail("write_nonblock");
+      }
+    }
   }
-  rb_iv_set(self,"@@byte_offset", rb_iv_get(self,"@@initial_byte_offset"));
+  CloseHandle(ov.hEvent);
   return n;
-*/
-  return rb_notimplement();
 }
 
 VALUE RB_SERIAL_EXPORT sp_read_impl(argc, argv, self)
@@ -669,30 +678,20 @@ VALUE RB_SERIAL_EXPORT sp_read_nonblock_impl(argc, argv, self)
   char ReadBuffer[bytes];
   DWORD syncbytes = 0;
   DWORD asyncbytes = 0;
-  BOOL fOverlapped = FALSE;
   OVERLAPPED ov = {0};
+  ov.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
   if (!ReadFile(rb_iv_get(self,"@@fh"), ReadBuffer, bytes, &syncbytes, &ov)){
     if (GetLastError() != ERROR_IO_PENDING){
-      sp_close_impl(self);
       _rb_win32_fail("ReadFile");
     }
     else{
-      fOverlapped = TRUE;
+      if (!GetOverlappedResult(rb_iv_get(self,"@@fh")), &ov, &asyncbytes, TRUE){
+        _rb_win32_fail("read_nonblock");
     }
   }
-  if (fOverlapped){
-    if (GetOverlappedResult(rb_iv_get(self,"@@fh")), &ov, &asyncbytes, TRUE){
-      return rb_str_new(ReadBuffer, bytes);
-    }
-    else{
-      sp_close_impl(self);
-      _rb_win32_fail("GetOverlappedResult");
-    }
-  }
-  else{
-    return rb_str_new(ReadBuffer, bytes);
-  }
+  CloseHandle(ov.hEvent);
+  return rb_str_new(ReadBuffer, bytes);
 }
 void RB_SERIAL_EXPORT sp_close_impl(self)
   VALUE self;
