@@ -686,7 +686,8 @@ VALUE RB_SERIAL_EXPORT sp_read_nonblock_impl(argc, argv, self)
       return rb_str_new(ReadBuffer, bytes);
     }
     else{
-      return rb_str_new(ReadBuffer, bytes);
+      sp_close_impl(self);
+      _rb_win32_fail("GetOverlappedResult");
     }
   }
   else{
