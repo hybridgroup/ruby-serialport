@@ -686,7 +686,7 @@ VALUE RB_SERIAL_EXPORT sp_read_nonblock_impl(argc, argv, self)
       _rb_win32_fail("ReadFile");
     }
     else{
-      if (!GetOverlappedResult(rb_iv_get(self,"@@fh")), &ov, &asyncbytes, TRUE){
+      if (!GetOverlappedResult(rb_iv_get(self,"@@fh"), &ov, &asyncbytes, TRUE)){
         _rb_win32_fail("read_nonblock");
       }
     }
