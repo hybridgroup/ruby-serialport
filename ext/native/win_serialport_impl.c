@@ -626,7 +626,7 @@ VALUE RB_SERIAL_EXPORT sp_write_nonblock_impl(self, str)
       _rb_win32_fail("WriteFile");
     }
     else {
-      if (!GetOverlappedResults(rb_iv_get(self,"@@fh"), &ov, &n, TRUE)){
+      if (!GetOverlappedResult(rb_iv_get(self,"@@fh"), &ov, &n, TRUE)){
         _rb_win32_fail("write_nonblock");
       }
     }
