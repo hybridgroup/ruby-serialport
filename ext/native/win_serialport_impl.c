@@ -607,7 +607,7 @@ VALUE RB_SERIAL_EXPORT sp_write_impl(self, str)
     _rb_win32_fail("WriteFile");
   }
   rb_iv_set(self,"@@byte_offset", rb_iv_get(self,"@@initial_byte_offset"));
-  return n;
+  return INT2FIX(n);
 }
 
 VALUE RB_SERIAL_EXPORT sp_read_impl(argc, argv, self)
